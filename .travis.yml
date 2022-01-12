@@ -1,0 +1,29 @@
+sudo: required
+services:
+  - docker
+  
+before_install:
+  # build a test ver of client proj and run some tests inside
+  # we build test on dockerfile.dev coz we only have test suites when all the dependencies attached to the proj
+  # prod ver only copies only prod version of proj in nginx part and doesnt allow any test
+  - docker build -t chuweih/react-test -f ./client/Dockerfile.dev ./client
+  # - docker build <myproj> <build-context>
+  
+script:
+  # - docker run <myproj> <test run>
+  - docker run -e CI=true chuweih/react-test npm test
+  
+after_success:
+  # config to build prod ver of proj
+  - docker build -t chuweih/multi-client ./client
+  - docker build -t chuweih/multi-nginx ./nginx
+  - docker build -t chuweih/multi-server ./server
+  - docker build -t chuweih/multi-worker ./worker
+  #login to docker CLI (using env var)
+  #get pwd as stdin for next cmd, set id by -u and tell cmd it could expect pwd form stdin
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  #take the images and push them to docker hub
+  - docker push chuweih/multi-client
+  - docker push chuweih/multi-nginx
+  - docker push chuweih/multi-server
+  - docker push chuweih/multi-worker
